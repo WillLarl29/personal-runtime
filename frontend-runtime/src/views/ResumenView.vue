@@ -23,54 +23,94 @@ onMounted(cargar)
 </script>
 
 <template>
-  <main>
+  <main class="page">
     <h1>Resumen</h1>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="cargando">Cargando resumen...</p>
-    <p v-else-if="resumen.length === 0">No hay datos todavía.</p>
+    <p v-if="error" class="banner banner-error">⚠️ {{ error }}</p>
+    <p v-if="cargando" class="empty-state">Cargando resumen…</p>
 
-    <table v-else>
-      <thead>
-        <tr>
-          <th>Actividad</th>
-          <th>Veces hecha</th>
-          <th>Veces no hecha</th>
-          <th>% Cumplimiento</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="r in resumen" :key="r.id">
-          <td>{{ r.titulo }}</td>
-          <td>{{ r.veces_hecha }}</td>
-          <td>{{ r.veces_no_hecha }}</td>
-          <td>{{ r.porcentaje_cumplimiento ?? '-' }}%</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else-if="resumen.length === 0" class="empty-state">
+      <p>Todavía no hay actividades para resumir.</p>
+    </div>
+
+    <ul v-else class="lista">
+      <li v-for="r in resumen" :key="r.id" class="card item">
+        <div class="item-head">
+          <strong>{{ r.titulo }}</strong>
+          <span class="pct">{{ r.porcentaje_cumplimiento ?? 0 }}%</span>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: `${r.porcentaje_cumplimiento ?? 0}%` }" />
+        </div>
+
+        <div class="item-stats">
+          <span>✅ {{ r.veces_hecha }} hechas</span>
+          <span>⬜ {{ r.veces_no_hecha }} pendientes</span>
+        </div>
+      </li>
+    </ul>
   </main>
 </template>
 
 <style scoped>
-main {
-  max-width: 640px;
+.page {
+  max-width: 720px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+.page h1 {
+  font-size: 1.5rem;
 }
 
-th,
-td {
-  text-align: left;
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
+.lista {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.error {
-  color: #d33;
+.item {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pct {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.item-stats {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }
 </style>
