@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { listarActividades, crearActividad, crearCheck } from '@/services/api'
-import type { Actividad } from '@/services/types'
+import { RouterLink } from 'vue-router'
+import { listarActividades, crearActividad, crearCheck, listarCategorias } from '@/services/api'
+import type { Actividad, Categoria } from '@/services/types'
 
 const actividades = ref<Actividad[]>([])
+const categorias = ref<Categoria[]>([])
 const cargando = ref(true)
 const error = ref<string | null>(null)
 
 const nuevoTitulo = ref('')
 const nuevaDescripcion = ref('')
-const nuevaCategoria = ref('')
+const nuevaCategoriaId = ref<number | null>(null)
 const nuevaPrioridad = ref(3)
 const creando = ref(false)
 const formAbierto = ref(false)
@@ -29,6 +31,14 @@ async function cargarActividades() {
   }
 }
 
+async function cargarCategorias() {
+  try {
+    categorias.value = await listarCategorias()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Error desconocido'
+  }
+}
+
 async function onCrearActividad() {
   if (!nuevoTitulo.value.trim()) return
   creando.value = true
@@ -37,12 +47,12 @@ async function onCrearActividad() {
     await crearActividad({
       titulo: nuevoTitulo.value,
       descripcion: nuevaDescripcion.value || null,
-      categoria: nuevaCategoria.value || null,
+      categoria_id: nuevaCategoriaId.value,
       prioridad: nuevaPrioridad.value,
     })
     nuevoTitulo.value = ''
     nuevaDescripcion.value = ''
-    nuevaCategoria.value = ''
+    nuevaCategoriaId.value = null
     nuevaPrioridad.value = 3
     formAbierto.value = false
     await cargarActividades()
@@ -71,7 +81,10 @@ function prioridadLabel(p: number | null) {
   return ['', 'Muy baja', 'Baja', 'Media', 'Alta', 'Urgente'][p] ?? `P${p}`
 }
 
-onMounted(cargarActividades)
+onMounted(() => {
+  cargarActividades()
+  cargarCategorias()
+})
 </script>
 
 <template>
@@ -87,7 +100,13 @@ onMounted(cargarActividades)
       <input v-model="nuevoTitulo" class="input" placeholder="Título" required autofocus />
       <input v-model="nuevaDescripcion" class="input" placeholder="Descripción (opcional)" />
       <div class="form-row">
-        <input v-model="nuevaCategoria" class="input" placeholder="Categoría (opcional)" />
+        <label class="prioridad-field">
+          <span>Categoría</span>
+          <select v-model="nuevaCategoriaId" class="input">
+            <option :value="null">Sin categoría</option>
+            <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+          </select>
+        </label>
         <label class="prioridad-field">
           <span>Prioridad</span>
           <select v-model.number="nuevaPrioridad" class="input">
@@ -95,6 +114,10 @@ onMounted(cargarActividades)
           </select>
         </label>
       </div>
+      <p v-if="categorias.length === 0" class="hint">
+        No tienes categorías todavía — puedes crearlas en la sección
+        <RouterLink to="/categorias">Categorías</RouterLink>.
+      </p>
       <button type="submit" class="btn" :disabled="creando">
         {{ creando ? 'Creando…' : 'Guardar actividad' }}
       </button>
@@ -116,7 +139,7 @@ onMounted(cargarActividades)
         <div class="item-body">
           <div class="item-title-row">
             <strong>{{ a.titulo }}</strong>
-            <span v-if="a.categoria" class="chip">{{ a.categoria }}</span>
+            <span v-if="a.categoria_nombre" class="chip">{{ a.categoria_nombre }}</span>
           </div>
           <p v-if="a.descripcion" class="item-desc">{{ a.descripcion }}</p>
         </div>
@@ -179,6 +202,11 @@ onMounted(cargarActividades)
 
 .prioridad-field select {
   min-width: 11rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }
 
 .lista {

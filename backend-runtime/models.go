@@ -2,24 +2,42 @@ package main
 
 import "time"
 
-// Actividad refleja la tabla actividades (ver migrations/*_baseline-esquema-inicial.sql)
+// Actividad refleja la tabla actividades (ver migrations/*_baseline-esquema-inicial.sql
+// y migrations/*_categoria-como-tabla-propia.sql)
 type Actividad struct {
-	ID             int32     `json:"id" db:"id"`
-	Titulo         string    `json:"titulo" db:"titulo"`
-	Descripcion    *string   `json:"descripcion" db:"descripcion"`
-	Categoria      *string   `json:"categoria" db:"categoria"`
-	Prioridad      *int16    `json:"prioridad" db:"prioridad"`
-	Activa         bool      `json:"activa" db:"activa"`
-	CreadoEn       time.Time `json:"creado_en" db:"creado_en"`
-	ActualizadoEn  time.Time `json:"actualizado_en" db:"actualizado_en"`
+	ID              int32     `json:"id" db:"id"`
+	Titulo          string    `json:"titulo" db:"titulo"`
+	Descripcion     *string   `json:"descripcion" db:"descripcion"`
+	CategoriaID     *int32    `json:"categoria_id" db:"categoria_id"`
+	CategoriaNombre *string   `json:"categoria_nombre" db:"categoria_nombre"`
+	Prioridad       *int16    `json:"prioridad" db:"prioridad"`
+	Activa          bool      `json:"activa" db:"activa"`
+	CreadoEn        time.Time `json:"creado_en" db:"creado_en"`
+	ActualizadoEn   time.Time `json:"actualizado_en" db:"actualizado_en"`
 }
 
 // CrearActividadInput es el body esperado en POST /actividades
 type CrearActividadInput struct {
 	Titulo      string  `json:"titulo"`
 	Descripcion *string `json:"descripcion"`
-	Categoria   *string `json:"categoria"`
+	CategoriaID *int32  `json:"categoria_id"`
 	Prioridad   *int16  `json:"prioridad"`
+}
+
+// Categoria refleja la tabla categorias
+type Categoria struct {
+	ID     int32  `json:"id" db:"id"`
+	Nombre string `json:"nombre" db:"nombre"`
+}
+
+// CrearCategoriaInput es el body esperado en POST /categorias
+type CrearCategoriaInput struct {
+	Nombre string `json:"nombre"`
+}
+
+// ActualizarCategoriaInput es el body esperado en PUT /categorias/{id}
+type ActualizarCategoriaInput struct {
+	Nombre string `json:"nombre"`
 }
 
 // CheckDiario refleja la tabla checks_diarios

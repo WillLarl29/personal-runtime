@@ -4,7 +4,8 @@ export interface Actividad {
   id: number
   titulo: string
   descripcion: string | null
-  categoria: string | null
+  categoria_id: number | null
+  categoria_nombre: string | null
   prioridad: number | null
   activa: boolean
   creado_en: string
@@ -14,7 +15,7 @@ export interface Actividad {
 export interface CrearActividadInput {
   titulo: string
   descripcion?: string | null
-  categoria?: string | null
+  categoria_id?: number | null
   prioridad?: number | null
 }
 
@@ -37,4 +38,17 @@ export interface ResumenActividad {
   veces_hecha: number
   veces_no_hecha: number
   porcentaje_cumplimiento: number | null
+}
+
+export interface Categoria {
+  id: number
+  nombre: string
+}
+
+export interface CrearCategoriaInput {
+  nombre: string
+}
+
+export interface ActualizarCategoriaInput {
+  nombre: string
 }

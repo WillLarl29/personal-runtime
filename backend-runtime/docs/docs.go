@@ -96,6 +96,191 @@ const docTemplate = `{
                 }
             }
         },
+        "/categorias": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categorias"
+                ],
+                "summary": "Listar categorías",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.Categoria"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categorias"
+                ],
+                "summary": "Crear categoría",
+                "parameters": [
+                    {
+                        "description": "Nombre de la categoría",
+                        "name": "categoria",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CrearCategoriaInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.Categoria"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categorias/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categorias"
+                ],
+                "summary": "Renombrar categoría",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la categoría",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Nuevo nombre",
+                        "name": "categoria",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.ActualizarCategoriaInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Categoria"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "categorias"
+                ],
+                "summary": "Eliminar categoría",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la categoría",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/checks": {
             "post": {
                 "consumes": [
@@ -190,7 +375,10 @@ const docTemplate = `{
                 "actualizado_en": {
                     "type": "string"
                 },
-                "categoria": {
+                "categoria_id": {
+                    "type": "integer"
+                },
+                "categoria_nombre": {
                     "type": "string"
                 },
                 "creado_en": {
@@ -206,6 +394,25 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "titulo": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ActualizarCategoriaInput": {
+            "type": "object",
+            "properties": {
+                "nombre": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.Categoria": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "nombre": {
                     "type": "string"
                 }
             }
@@ -233,8 +440,8 @@ const docTemplate = `{
         "main.CrearActividadInput": {
             "type": "object",
             "properties": {
-                "categoria": {
-                    "type": "string"
+                "categoria_id": {
+                    "type": "integer"
                 },
                 "descripcion": {
                     "type": "string"
@@ -243,6 +450,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "titulo": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.CrearCategoriaInput": {
+            "type": "object",
+            "properties": {
+                "nombre": {
                     "type": "string"
                 }
             }

@@ -6,7 +6,9 @@ definitions:
         type: boolean
       actualizado_en:
         type: string
-      categoria:
+      categoria_id:
+        type: integer
+      categoria_nombre:
         type: string
       creado_en:
         type: string
@@ -17,6 +19,18 @@ definitions:
       prioridad:
         type: integer
       titulo:
+        type: string
+    type: object
+  main.ActualizarCategoriaInput:
+    properties:
+      nombre:
+        type: string
+    type: object
+  main.Categoria:
+    properties:
+      id:
+        type: integer
+      nombre:
         type: string
     type: object
   main.CheckDiario:
@@ -34,13 +48,18 @@ definitions:
     type: object
   main.CrearActividadInput:
     properties:
-      categoria:
-        type: string
+      categoria_id:
+        type: integer
       descripcion:
         type: string
       prioridad:
         type: integer
       titulo:
+        type: string
+    type: object
+  main.CrearCategoriaInput:
+    properties:
+      nombre:
         type: string
     type: object
   main.CrearCheckInput:
@@ -123,6 +142,127 @@ paths:
       summary: Crear actividad
       tags:
       - actividades
+  /categorias:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Categoria'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Listar categorías
+      tags:
+      - categorias
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Nombre de la categoría
+        in: body
+        name: categoria
+        required: true
+        schema:
+          $ref: '#/definitions/main.CrearCategoriaInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.Categoria'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear categoría
+      tags:
+      - categorias
+  /categorias/{id}:
+    delete:
+      parameters:
+      - description: ID de la categoría
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Sin contenido
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar categoría
+      tags:
+      - categorias
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID de la categoría
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Nuevo nombre
+        in: body
+        name: categoria
+        required: true
+        schema:
+          $ref: '#/definitions/main.ActualizarCategoriaInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Categoria'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Renombrar categoría
+      tags:
+      - categorias
   /checks:
     post:
       consumes:

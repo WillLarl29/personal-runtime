@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,15 @@ import (
 type server struct {
 	db *pgxpool.Pool
 }
+
+// actividadSelect trae cada actividad ya con el nombre de su categoría
+// (LEFT JOIN porque categoria_id es opcional).
+const actividadSelect = `
+	SELECT a.id, a.titulo, a.descripcion, a.categoria_id, c.nombre AS categoria_nombre,
+	       a.prioridad, a.activa, a.creado_en, a.actualizado_en
+	FROM actividades a
+	LEFT JOIN categorias c ON c.id = a.categoria_id
+`
 
 // @title           API de Actividades
 // @version         1.0
@@ -40,6 +50,10 @@ func main() {
 	mux.HandleFunc("POST /actividades", s.handleCrearActividad)
 	mux.HandleFunc("POST /checks", s.handleCrearCheck)
 	mux.HandleFunc("GET /resumen", s.handleResumen)
+	mux.HandleFunc("GET /categorias", s.handleListarCategorias)
+	mux.HandleFunc("POST /categorias", s.handleCrearCategoria)
+	mux.HandleFunc("PUT /categorias/{id}", s.handleActualizarCategoria)
+	mux.HandleFunc("DELETE /categorias/{id}", s.handleEliminarCategoria)
 	mux.HandleFunc("GET /swagger/", httpSwagger.WrapHandler)
 
 	port := os.Getenv("PORT")
@@ -89,9 +103,7 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  map[string]string
 // @Router       /actividades [get]
 func (s *server) handleListarActividades(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.db.Query(r.Context(),
-		"SELECT id, titulo, descripcion, categoria, prioridad, activa, creado_en, actualizado_en FROM actividades WHERE activa = TRUE ORDER BY id",
-	)
+	rows, err := s.db.Query(r.Context(), actividadSelect+" WHERE a.activa = TRUE ORDER BY a.id")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -124,12 +136,18 @@ func (s *server) handleCrearActividad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := s.db.Query(r.Context(),
-		`INSERT INTO actividades (titulo, descripcion, categoria, prioridad)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, titulo, descripcion, categoria, prioridad, activa, creado_en, actualizado_en`,
-		input.Titulo, input.Descripcion, input.Categoria, input.Prioridad,
-	)
+	var nuevoID int32
+	err := s.db.QueryRow(r.Context(),
+		`INSERT INTO actividades (titulo, descripcion, categoria_id, prioridad)
+		 VALUES ($1, $2, $3, $4) RETURNING id`,
+		input.Titulo, input.Descripcion, input.CategoriaID, input.Prioridad,
+	).Scan(&nuevoID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(), actividadSelect+" WHERE a.id = $1", nuevoID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -206,6 +224,133 @@ func (s *server) handleResumen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resumen)
+}
+
+// handleListarCategorias godoc
+// @Summary      Listar categorías
+// @Tags         categorias
+// @Produce      json
+// @Success      200  {array}   Categoria
+// @Failure      500  {object}  map[string]string
+// @Router       /categorias [get]
+func (s *server) handleListarCategorias(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.db.Query(r.Context(), "SELECT id, nombre FROM categorias ORDER BY nombre")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer rows.Close()
+
+	categorias, err := pgx.CollectRows(rows, pgx.RowToStructByName[Categoria])
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, categorias)
+}
+
+// handleCrearCategoria godoc
+// @Summary      Crear categoría
+// @Tags         categorias
+// @Accept       json
+// @Produce      json
+// @Param        categoria  body      CrearCategoriaInput  true  "Nombre de la categoría"
+// @Success      201  {object}  Categoria
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categorias [post]
+func (s *server) handleCrearCategoria(w http.ResponseWriter, r *http.Request) {
+	var input CrearCategoriaInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(),
+		"INSERT INTO categorias (nombre) VALUES ($1) RETURNING id, nombre",
+		input.Nombre,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer rows.Close()
+
+	categoria, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByName[Categoria])
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, categoria)
+}
+
+// handleActualizarCategoria godoc
+// @Summary      Renombrar categoría
+// @Tags         categorias
+// @Accept       json
+// @Produce      json
+// @Param        id         path      int                       true  "ID de la categoría"
+// @Param        categoria  body      ActualizarCategoriaInput  true  "Nuevo nombre"
+// @Success      200  {object}  Categoria
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categorias/{id} [put]
+func (s *server) handleActualizarCategoria(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var input ActualizarCategoriaInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(),
+		"UPDATE categorias SET nombre = $1 WHERE id = $2 RETURNING id, nombre",
+		input.Nombre, id,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer rows.Close()
+
+	categoria, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByName[Categoria])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, categoria)
+}
+
+// handleEliminarCategoria godoc
+// @Summary      Eliminar categoría
+// @Tags         categorias
+// @Param        id  path  int  true  "ID de la categoría"
+// @Success      204  "Sin contenido"
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categorias/{id} [delete]
+func (s *server) handleEliminarCategoria(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if _, err := s.db.Exec(r.Context(), "DELETE FROM categorias WHERE id = $1", id); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {
