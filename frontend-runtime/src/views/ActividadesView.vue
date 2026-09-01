@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { listarActividades, crearActividad, crearCheck, listarCategorias } from '@/services/api'
-import type { Actividad, Categoria } from '@/services/types'
+import {
+  listarActividades,
+  crearActividad,
+  crearCheck,
+  listarCategorias,
+  obtenerResumen,
+} from '@/services/api'
+import type { Actividad, Categoria, ResumenActividad } from '@/services/types'
 
 const actividades = ref<Actividad[]>([])
 const categorias = ref<Categoria[]>([])
+const resumen = ref<ResumenActividad[]>([])
 const cargando = ref(true)
 const error = ref<string | null>(null)
 
@@ -18,6 +25,12 @@ const formAbierto = ref(false)
 
 const checkEnCurso = ref<number | null>(null)
 const checkeadasHoy = ref<Set<number>>(new Set())
+
+const overallProgress = computed(() => {
+  if (resumen.value.length === 0) return 0
+  const total = resumen.value.reduce((sum, r) => sum + (r.porcentaje_cumplimiento ?? 0), 0)
+  return Math.round(total / resumen.value.length)
+})
 
 async function cargarActividades() {
   cargando.value = true
@@ -37,6 +50,22 @@ async function cargarCategorias() {
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Error desconocido'
   }
+}
+
+async function cargarResumen() {
+  try {
+    resumen.value = await obtenerResumen()
+  } catch {
+    // El panel de progreso es informativo: si falla, simplemente no se muestra.
+  }
+}
+
+function abrirFormulario() {
+  formAbierto.value = true
+}
+
+function cerrarFormulario() {
+  formAbierto.value = false
 }
 
 async function onCrearActividad() {
@@ -64,6 +93,7 @@ async function onCrearActividad() {
 }
 
 async function onCheck(actividadId: number) {
+  if (checkeadasHoy.value.has(actividadId)) return
   checkEnCurso.value = actividadId
   error.value = null
   try {
@@ -76,6 +106,14 @@ async function onCheck(actividadId: number) {
   }
 }
 
+function prioridadInfo(p: number | null) {
+  const nivel = p ?? 0
+  if (nivel >= 4) return { label: 'Alta', bars: 3 }
+  if (nivel === 3) return { label: 'Media', bars: 2 }
+  if (nivel >= 1) return { label: 'Baja', bars: 1 }
+  return { label: 'Sin definir', bars: 0 }
+}
+
 function prioridadLabel(p: number | null) {
   if (!p) return null
   return ['', 'Muy baja', 'Baja', 'Media', 'Alta', 'Urgente'][p] ?? `P${p}`
@@ -84,129 +122,194 @@ function prioridadLabel(p: number | null) {
 onMounted(() => {
   cargarActividades()
   cargarCategorias()
+  cargarResumen()
 })
 </script>
 
 <template>
   <main class="page">
-    <div class="page-header">
-      <h1>Actividades</h1>
-      <button class="btn" @click="formAbierto = !formAbierto">
-        {{ formAbierto ? 'Cancelar' : '+ Nueva actividad' }}
-      </button>
-    </div>
+    <div class="layout">
+      <section class="main-col">
+        <p v-if="error" class="banner banner-error">⚠️ {{ error }}</p>
 
-    <form v-if="formAbierto" class="card form-actividad" @submit.prevent="onCrearActividad">
-      <input v-model="nuevoTitulo" class="input" placeholder="Título" required autofocus />
-      <input v-model="nuevaDescripcion" class="input" placeholder="Descripción (opcional)" />
-      <div class="form-row">
-        <label class="prioridad-field">
-          <span>Categoría</span>
-          <select v-model="nuevaCategoriaId" class="input">
-            <option :value="null">Sin categoría</option>
-            <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
-          </select>
-        </label>
-        <label class="prioridad-field">
-          <span>Prioridad</span>
-          <select v-model.number="nuevaPrioridad" class="input">
-            <option v-for="p in 5" :key="p" :value="p">{{ p }} · {{ prioridadLabel(p) }}</option>
-          </select>
-        </label>
-      </div>
-      <p v-if="categorias.length === 0" class="hint">
-        No tienes categorías todavía — puedes crearlas en la sección
-        <RouterLink to="/categorias">Categorías</RouterLink>.
-      </p>
-      <button type="submit" class="btn" :disabled="creando">
-        {{ creando ? 'Creando…' : 'Guardar actividad' }}
-      </button>
-    </form>
+        <p v-if="cargando" class="empty-state">Cargando actividades…</p>
 
-    <p v-if="error" class="banner banner-error">⚠️ {{ error }}</p>
-
-    <p v-if="cargando" class="empty-state">Cargando actividades…</p>
-
-    <div v-else-if="actividades.length === 0" class="empty-state">
-      <p>Aún no tienes actividades.</p>
-      <p>Crea la primera con el botón de arriba.</p>
-    </div>
-
-    <ul v-else class="lista">
-      <li v-for="a in actividades" :key="a.id" class="card item">
-        <span class="prioridad-dot" :data-nivel="a.prioridad ?? 0" />
-
-        <div class="item-body">
-          <div class="item-title-row">
-            <strong>{{ a.titulo }}</strong>
-            <span v-if="a.categoria_nombre" class="chip">{{ a.categoria_nombre }}</span>
-          </div>
-          <p v-if="a.descripcion" class="item-desc">{{ a.descripcion }}</p>
+        <div v-else-if="actividades.length === 0" class="empty-state">
+          <p>Aún no tienes actividades.</p>
+          <p>Crea la primera con el botón "+ Nueva actividad".</p>
         </div>
 
-        <button
-          class="btn check-btn"
-          :class="{ 'btn-secondary': checkeadasHoy.has(a.id) }"
-          :disabled="checkEnCurso === a.id || checkeadasHoy.has(a.id)"
-          @click="onCheck(a.id)"
-        >
-          <template v-if="checkeadasHoy.has(a.id)">✓ Hecho hoy</template>
-          <template v-else-if="checkEnCurso === a.id">…</template>
-          <template v-else>Check hoy</template>
-        </button>
-      </li>
-    </ul>
+        <ul v-else class="lista">
+          <li v-for="a in actividades" :key="a.id" class="card item">
+            <button
+              type="button"
+              class="check-circle"
+              :class="{ 'is-checked': checkeadasHoy.has(a.id) }"
+              :disabled="checkEnCurso === a.id || checkeadasHoy.has(a.id)"
+              :aria-label="checkeadasHoy.has(a.id) ? 'Hecho hoy' : 'Marcar como hecho hoy'"
+              @click="onCheck(a.id)"
+            >
+              <svg v-if="checkeadasHoy.has(a.id)" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2.5 7.2L5.4 10L11.5 3.8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span v-else-if="checkEnCurso === a.id" class="spinner" />
+            </button>
+
+            <div class="item-body">
+              <strong class="item-title">{{ a.titulo }}</strong>
+              <p v-if="a.descripcion" class="item-desc">{{ a.descripcion }}</p>
+              <span v-if="a.categoria_nombre" class="pill">{{ a.categoria_nombre }}</span>
+            </div>
+
+            <div class="priority-indicator" :title="`Prioridad: ${prioridadInfo(a.prioridad).label}`">
+              <span
+                v-for="bar in 3"
+                :key="bar"
+                class="priority-bar"
+                :style="{ height: `${bar * 4 + 4}px` }"
+                :class="{ 'is-filled': bar <= prioridadInfo(a.prioridad).bars }"
+              />
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <aside class="side-col">
+        <div class="card summary-inset">
+          <span class="summary-label">Overall Progress</span>
+          <div class="summary-pct">{{ overallProgress }}%</div>
+          <div class="progress-track">
+            <div class="progress-fill" :style="{ width: `${overallProgress}%` }" />
+          </div>
+          <RouterLink to="/resumen" class="summary-link">Ver resumen completo →</RouterLink>
+        </div>
+      </aside>
+    </div>
+
+    <button type="button" class="fab" @click="abrirFormulario">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2.5V13.5M2.5 8H13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      Nueva actividad
+    </button>
+
+    <div v-if="formAbierto" class="modal-overlay" @click.self="cerrarFormulario">
+      <form class="modal-card" @submit.prevent="onCrearActividad">
+        <div class="modal-header">
+          <h2>Nueva actividad</h2>
+          <button type="button" class="icon-btn" aria-label="Cerrar" @click="cerrarFormulario">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <label class="field">
+          <span>Título</span>
+          <input v-model="nuevoTitulo" class="input" placeholder="p. ej. Practicar básquet" required autofocus />
+        </label>
+
+        <label class="field">
+          <span>Descripción</span>
+          <textarea v-model="nuevaDescripcion" class="input" placeholder="Descripción (opcional)" rows="3" />
+        </label>
+
+        <div class="form-row">
+          <label class="field">
+            <span>Categoría</span>
+            <select v-model="nuevaCategoriaId" class="input">
+              <option :value="null">Sin categoría</option>
+              <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Prioridad</span>
+            <select v-model.number="nuevaPrioridad" class="input">
+              <option v-for="p in 5" :key="p" :value="p">{{ p }} · {{ prioridadLabel(p) }}</option>
+            </select>
+          </label>
+        </div>
+
+        <p v-if="categorias.length === 0" class="hint">
+          No tienes categorías todavía — puedes crearlas en la sección
+          <RouterLink to="/categorias">Categorías</RouterLink>.
+        </p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" @click="cerrarFormulario">Cancelar</button>
+          <button type="submit" class="btn" :disabled="creando">
+            {{ creando ? 'Guardando…' : 'Guardar actividad' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .page {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+  padding: var(--space-8) var(--space-6) 7rem;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.page-header h1 {
-  font-size: 1.5rem;
-}
-
-.form-actividad {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-6);
-}
-
-.form-row {
+.layout {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--space-3);
+  grid-template-columns: 1fr 17rem;
+  gap: var(--space-6);
+  align-items: start;
 }
 
-.prioridad-field {
+.main-col {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.side-col {
+  position: sticky;
+  top: calc(var(--space-8) + 3.5rem);
+}
+
+.summary-inset {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.summary-label {
   font-size: 0.8rem;
+  font-weight: 700;
   color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.prioridad-field select {
-  min-width: 11rem;
+.summary-pct {
+  font-size: 2rem;
+  font-weight: 800;
 }
 
-.hint {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
+.progress-track {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-accent);
+  transition: width 0.3s ease;
+}
+
+.summary-link {
+  margin-top: var(--space-1);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .lista {
@@ -229,52 +332,134 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
 }
 
-.prioridad-dot {
+.check-circle {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 50%;
-  background: var(--color-text-subtle);
+  border: 1.6px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    transform 0.1s;
 }
 
-.prioridad-dot[data-nivel='4'],
-.prioridad-dot[data-nivel='5'] {
-  background: var(--color-danger);
+.check-circle:hover:not(:disabled) {
+  border-color: var(--color-accent);
 }
 
-.prioridad-dot[data-nivel='3'] {
+.check-circle:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.check-circle.is-checked {
   background: var(--color-accent);
+  border-color: var(--color-accent);
+  cursor: default;
+}
+
+.spinner {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .item-body {
   flex: 1;
   min-width: 0;
-}
-
-.item-title-row {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
-.chip {
-  font-size: 0.75rem;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-weight: 600;
+.item-title {
+  font-weight: 700;
 }
 
 .item-desc {
-  margin-top: 0.2rem;
   color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
-.check-btn {
+.pill {
+  align-self: flex-start;
+}
+
+.priority-indicator {
   flex-shrink: 0;
-  white-space: nowrap;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+
+.priority-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--color-neutral-soft-hover);
+}
+
+.priority-bar.is-filled {
+  background: var(--color-text);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .side-col {
+    position: static;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .fab {
+    right: var(--space-4);
+    bottom: var(--space-4);
+  }
 }
 </style>

@@ -65,6 +65,7 @@ onMounted(cargar)
 
 .page h1 {
   font-size: 1.5rem;
+  font-weight: 800;
 }
 
 .lista {
@@ -89,21 +90,25 @@ onMounted(cargar)
 }
 
 .pct {
-  font-weight: 700;
-  color: var(--color-accent);
+  font-weight: 800;
+  font-size: 1.1rem;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .progress-track {
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--color-border);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--color-accent);
-  border-radius: 999px;
+  background: var(--gradient-accent);
+  border-radius: var(--radius-full);
   transition: width 0.3s ease;
 }
 

@@ -11,10 +11,11 @@ a {
 
 /* --- Elementos de formulario reutilizables (usados en las vistas) --- */
 
-.input {
+.input,
+textarea.input {
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--color-border);
+  padding: 0.6rem 0.8rem;
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -23,14 +24,37 @@ a {
     box-shadow 0.15s;
 }
 
+textarea.input {
+  resize: vertical;
+  min-height: 5rem;
+  font-family: inherit;
+}
+
 .input::placeholder {
   color: var(--color-text-subtle);
 }
 
-.input:focus {
+.input:focus,
+textarea.input:focus {
   outline: none;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23000004' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23fbfbfb' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
 }
 
 .btn {
@@ -38,17 +62,19 @@ a {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: 0.6rem 1.1rem;
+  padding: 0.6rem 1.15rem;
   border: none;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   transition:
     background-color 0.15s,
     transform 0.1s,
-    opacity 0.15s;
+    opacity 0.15s,
+    box-shadow 0.15s;
 }
 
 .btn:hover:not(:disabled) {
@@ -60,18 +86,62 @@ a {
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .btn-secondary {
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--color-text);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-surface-hover);
+  background: var(--color-neutral-soft);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1.5px solid var(--color-border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-neutral-soft);
+  color: var(--color-text);
+}
+
+/* Botón icono minimal (usado para acciones de renombrar / eliminar, etc.) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    opacity 0.15s;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--color-neutral-soft);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn.icon-btn-danger:hover:not(:disabled) {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
 }
 
 .card {
@@ -79,6 +149,19 @@ a {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+}
+
+/* Pill de categoría (acento secundario púrpura) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: var(--color-secondary-soft);
+  color: var(--color-secondary);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .banner {
@@ -104,4 +187,75 @@ a {
   text-align: center;
   padding: var(--space-8) var(--space-4);
   color: var(--color-text-muted);
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 4, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 30rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  font-size: 1.15rem;
+}
+
+/* --- Floating action button --- */
+.fab {
+  position: fixed;
+  bottom: var(--space-8);
+  right: var(--space-8);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.9rem 1.4rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(4, 181, 244, 0.4);
+  transition:
+    background-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+  z-index: 40;
+}
+
+.fab:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(4, 181, 244, 0.48);
+}
+
+.fab:active {
+  transform: translateY(0) scale(0.98);
 }

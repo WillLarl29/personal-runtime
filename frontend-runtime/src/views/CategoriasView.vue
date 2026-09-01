@@ -103,7 +103,13 @@ onMounted(cargar)
     <ul v-else class="lista">
       <li v-for="c in categorias" :key="c.id" class="card item">
         <template v-if="editandoId === c.id">
-          <input v-model="nombreEditado" class="input" @keyup.enter="guardarEdicion(c.id)" />
+          <input
+            v-model="nombreEditado"
+            class="input"
+            autofocus
+            @keyup.enter="guardarEdicion(c.id)"
+            @keyup.esc="cancelarEdicion"
+          />
           <div class="acciones">
             <button class="btn" :disabled="guardando" @click="guardarEdicion(c.id)">Guardar</button>
             <button class="btn btn-secondary" @click="cancelarEdicion">Cancelar</button>
@@ -113,13 +119,33 @@ onMounted(cargar)
         <template v-else>
           <span class="nombre">{{ c.nombre }}</span>
           <div class="acciones">
-            <button class="btn btn-secondary" @click="empezarEdicion(c)">Renombrar</button>
+            <button class="icon-btn" aria-label="Renombrar" title="Renombrar" @click="empezarEdicion(c)">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path
+                  d="M11.5 2.5L14.5 5.5L5.83 14.17L2.5 15L3.33 11.67L11.5 2.5Z"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
             <button
-              class="btn btn-secondary btn-danger"
+              class="icon-btn icon-btn-danger"
+              aria-label="Eliminar"
+              title="Eliminar"
               :disabled="eliminandoId === c.id"
               @click="onEliminar(c.id)"
             >
-              {{ eliminandoId === c.id ? '...' : 'Eliminar' }}
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path
+                  d="M3.5 4.5H13.5M6.5 4.5V2.83C6.5 2.37 6.87 2 7.33 2H9.67C10.13 2 10.5 2.37 10.5 2.83V4.5M7 7.5V12M10 7.5V12M4.5 4.5L5 13.33C5.04 13.98 5.58 14.5 6.23 14.5H10.77C11.42 14.5 11.96 13.98 12 13.33L12.5 4.5"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
           </div>
         </template>
@@ -140,6 +166,7 @@ onMounted(cargar)
 
 .page h1 {
   font-size: 1.5rem;
+  font-weight: 800;
 }
 
 .form-inline {
@@ -170,16 +197,7 @@ onMounted(cargar)
 
 .acciones {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex-shrink: 0;
-}
-
-.btn-danger {
-  color: var(--color-danger);
-  border-color: var(--color-danger-soft);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: var(--color-danger-soft);
 }
 </style>
