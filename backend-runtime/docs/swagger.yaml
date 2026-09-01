@@ -1,0 +1,180 @@
+basePath: /
+definitions:
+  main.Actividad:
+    properties:
+      activa:
+        type: boolean
+      actualizado_en:
+        type: string
+      categoria:
+        type: string
+      creado_en:
+        type: string
+      descripcion:
+        type: string
+      id:
+        type: integer
+      prioridad:
+        type: integer
+      titulo:
+        type: string
+    type: object
+  main.CheckDiario:
+    properties:
+      actividad_id:
+        type: integer
+      creado_en:
+        type: string
+      fecha:
+        type: string
+      id:
+        type: integer
+      nota:
+        type: string
+    type: object
+  main.CrearActividadInput:
+    properties:
+      categoria:
+        type: string
+      descripcion:
+        type: string
+      prioridad:
+        type: integer
+      titulo:
+        type: string
+    type: object
+  main.CrearCheckInput:
+    properties:
+      actividad_id:
+        type: integer
+      nota:
+        type: string
+    type: object
+  main.ResumenActividad:
+    properties:
+      id:
+        type: integer
+      porcentaje_cumplimiento:
+        type: number
+      titulo:
+        type: string
+      veces_hecha:
+        type: integer
+      veces_no_hecha:
+        type: integer
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: API para gestionar actividades y sus checks diarios.
+  title: API de Actividades
+  version: "1.0"
+paths:
+  /actividades:
+    get:
+      description: Devuelve las actividades activas, ordenadas por id
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Actividad'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Listar actividades
+      tags:
+      - actividades
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Datos de la actividad
+        in: body
+        name: actividad
+        required: true
+        schema:
+          $ref: '#/definitions/main.CrearActividadInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.Actividad'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear actividad
+      tags:
+      - actividades
+  /checks:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Datos del check
+        in: body
+        name: check
+        required: true
+        schema:
+          $ref: '#/definitions/main.CrearCheckInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CheckDiario'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Dar check a una actividad hoy
+      tags:
+      - checks
+  /resumen:
+    get:
+      description: Usa la vista resumen_actividades
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.ResumenActividad'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resumen de cumplimiento por actividad
+      tags:
+      - resumen
+swagger: "2.0"

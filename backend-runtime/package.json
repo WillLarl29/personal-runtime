@@ -1,0 +1,9 @@
+{
+	"scripts": {
+		"migrate": "node-pg-migrate"
+	},
+	"dependencies": {
+		"dotenv": "^17.4.2",
+		"node-pg-migrate": "^9.0.0"
+	}
+}
