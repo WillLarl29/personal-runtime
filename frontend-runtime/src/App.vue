@@ -7,17 +7,8 @@ import { RouterLink, RouterView } from 'vue-router'
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
-          <svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-            <rect x="1" y="1" width="28" height="28" rx="9" fill="#000004" />
-            <path d="M9 15.5L13 19.5L21 10.5" stroke="url(#brandGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-            <defs>
-              <linearGradient id="brandGradient" x1="9" y1="10.5" x2="21" y2="19.5" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#04b5f4" />
-                <stop offset="1" stop-color="#9366f4" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span class="brand-text">ACTIVIDADES</span>
+          <img class="brand-mark" src="/rTme.ico" width="30" height="30" alt="Actividades" />
+          <span class="brand-text">RUN TIME</span>
         </div>
 
         <nav class="nav">
@@ -62,6 +53,10 @@ import { RouterLink, RouterView } from 'vue-router'
 
 .brand-mark {
   flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
 
 .brand-text {
