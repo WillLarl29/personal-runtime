@@ -8,6 +8,9 @@ export interface Actividad {
   categoria_nombre: string | null
   prioridad: number | null
   activa: boolean
+  // true si ya existe un check_diario para esta actividad en la fecha actual
+  // del servidor (checks_diarios solo permite uno por actividad y día).
+  check_hoy: boolean
   creado_en: string
   actualizado_en: string
 }

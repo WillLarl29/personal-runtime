@@ -3,27 +3,40 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	_ "backend-runtime/docs"
 )
 
+// pgUniqueViolation es el código de error de Postgres para violaciones de
+// restricciones UNIQUE (aquí, UNIQUE(actividad_id, fecha) en checks_diarios).
+const pgUniqueViolation = "23505"
+
 type server struct {
 	db *pgxpool.Pool
 }
 
 // actividadSelect trae cada actividad ya con el nombre de su categoría
-// (LEFT JOIN porque categoria_id es opcional).
+// (LEFT JOIN porque categoria_id es opcional) y si ya se registró un check
+// hoy (CURRENT_DATE, en la zona horaria del servidor de base de datos), para
+// que el frontend no tenga que adivinar el estado del día.
 const actividadSelect = `
 	SELECT a.id, a.titulo, a.descripcion, a.categoria_id, c.nombre AS categoria_nombre,
-	       a.prioridad, a.activa, a.creado_en, a.actualizado_en
+	       a.prioridad, a.activa,
+	       EXISTS (
+	         SELECT 1 FROM checks_diarios ch
+	         WHERE ch.actividad_id = a.id AND ch.fecha = CURRENT_DATE
+	       ) AS check_hoy,
+	       a.creado_en, a.actualizado_en
 	FROM actividades a
 	LEFT JOIN categorias c ON c.id = a.categoria_id
 `
@@ -165,12 +178,15 @@ func (s *server) handleCrearActividad(w http.ResponseWriter, r *http.Request) {
 
 // handleCrearCheck godoc
 // @Summary      Dar check a una actividad hoy
+// @Description  Solo se permite un check por actividad y por día (fecha del
+// @Description  servidor); si ya existe uno, devuelve 409.
 // @Tags         checks
 // @Accept       json
 // @Produce      json
 // @Param        check  body      CrearCheckInput  true  "Datos del check"
 // @Success      201  {object}  CheckDiario
 // @Failure      400  {object}  map[string]string
+// @Failure      409  {object}  map[string]string  "Ya existe un check para esta actividad hoy"
 // @Failure      500  {object}  map[string]string
 // @Router       /checks [post]
 func (s *server) handleCrearCheck(w http.ResponseWriter, r *http.Request) {
@@ -187,18 +203,31 @@ func (s *server) handleCrearCheck(w http.ResponseWriter, r *http.Request) {
 		input.ActividadID, input.Nota,
 	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		writeCheckError(w, err)
 		return
 	}
 	defer rows.Close()
 
 	check, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByName[CheckDiario])
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		writeCheckError(w, err)
 		return
 	}
 
 	writeJSON(w, http.StatusCreated, check)
+}
+
+// writeCheckError distingue la violación de la restricción "un check por
+// actividad y día" (UNIQUE(actividad_id, fecha)) del resto de errores de
+// base de datos, para que el frontend reciba un 409 con mensaje claro en vez
+// de un 500 genérico cuando el usuario ya marcó la actividad hoy.
+func writeCheckError(w http.ResponseWriter, err error) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+		writeError(w, http.StatusConflict, errors.New("esta actividad ya tiene un check registrado hoy"))
+		return
+	}
+	writeError(w, http.StatusInternalServerError, err)
 }
 
 // handleResumen godoc

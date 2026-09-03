@@ -10,6 +10,13 @@ definitions:
         type: integer
       categoria_nombre:
         type: string
+      check_hoy:
+        description: |-
+          CheckHoy indica si esta actividad ya tiene un check_diario registrado en
+          la fecha actual del servidor (checks_diarios tiene UNIQUE(actividad_id, fecha),
+          así que como máximo puede haber uno). Se lo mandamos ya resuelto al frontend
+          para que no tenga que inferir el estado del día a partir de clicks locales.
+        type: boolean
       creado_en:
         type: string
       descripcion:
@@ -267,6 +274,9 @@ paths:
     post:
       consumes:
       - application/json
+      description: |-
+        Solo se permite un check por actividad y por día (fecha del
+        servidor); si ya existe uno, devuelve 409.
       parameters:
       - description: Datos del check
         in: body
@@ -283,6 +293,12 @@ paths:
             $ref: '#/definitions/main.CheckDiario'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Ya existe un check para esta actividad hoy
           schema:
             additionalProperties:
               type: string

@@ -283,6 +283,7 @@ const docTemplate = `{
         },
         "/checks": {
             "post": {
+                "description": "Solo se permite un check por actividad y por día (fecha del\nservidor); si ya existe uno, devuelve 409.",
                 "consumes": [
                     "application/json"
                 ],
@@ -313,6 +314,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ya existe un check para esta actividad hoy",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -380,6 +390,10 @@ const docTemplate = `{
                 },
                 "categoria_nombre": {
                     "type": "string"
+                },
+                "check_hoy": {
+                    "description": "CheckHoy indica si esta actividad ya tiene un check_diario registrado en\nla fecha actual del servidor (checks_diarios tiene UNIQUE(actividad_id, fecha),\nasí que como máximo puede haber uno). Se lo mandamos ya resuelto al frontend\npara que no tenga que inferir el estado del día a partir de clicks locales.",
+                    "type": "boolean"
                 },
                 "creado_en": {
                     "type": "string"

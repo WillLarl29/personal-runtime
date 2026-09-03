@@ -7,6 +7,7 @@ import {
   crearCheck,
   listarCategorias,
   obtenerResumen,
+  ApiError,
 } from '@/services/api'
 import type { Actividad, Categoria, ResumenActividad } from '@/services/types'
 
@@ -32,11 +33,27 @@ const overallProgress = computed(() => {
   return Math.round(total / resumen.value.length)
 })
 
+// Fecha de hoy, formateada para mostrarse en la pantalla: el check es por día
+// (el backend solo permite uno por actividad y fecha), así que conviene que
+// se vea a qué día corresponde el estado "hecho" que se está marcando.
+const hoyFormateado = computed(() => {
+  const texto = new Intl.DateTimeFormat('es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date())
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+})
+
 async function cargarActividades() {
   cargando.value = true
   error.value = null
   try {
     actividades.value = await listarActividades()
+    // El backend ya nos dice, por actividad, si hoy tiene check registrado
+    // (check_hoy) — sincronizamos el set local con ese estado real en vez de
+    // depender solo de los clicks hechos en esta sesión.
+    checkeadasHoy.value = new Set(actividades.value.filter((a) => a.check_hoy).map((a) => a.id))
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Error desconocido'
   } finally {
@@ -100,7 +117,13 @@ async function onCheck(actividadId: number) {
     await crearCheck({ actividad_id: actividadId })
     checkeadasHoy.value = new Set(checkeadasHoy.value).add(actividadId)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Error desconocido'
+    if (e instanceof ApiError && e.status === 409) {
+      // Ya existía un check para hoy (p. ej. otra pestaña se adelantó): no es
+      // un error real, solo sincronizamos el estado local con el del backend.
+      checkeadasHoy.value = new Set(checkeadasHoy.value).add(actividadId)
+    } else {
+      error.value = e instanceof Error ? e.message : 'Error desconocido'
+    }
   } finally {
     checkEnCurso.value = null
   }
@@ -130,6 +153,14 @@ onMounted(() => {
   <main class="page">
     <div class="layout">
       <section class="main-col">
+        <div class="today-row">
+          <span class="today-dot" aria-hidden="true" />
+          <span>
+            Hoy · <strong>{{ hoyFormateado }}</strong>
+          </span>
+          <span class="today-hint">— cada actividad admite un check por día</span>
+        </div>
+
         <p v-if="error" class="banner banner-error">⚠️ {{ error }}</p>
 
         <p v-if="cargando" class="empty-state">Cargando actividades…</p>
@@ -146,7 +177,8 @@ onMounted(() => {
               class="check-circle"
               :class="{ 'is-checked': checkeadasHoy.has(a.id) }"
               :disabled="checkEnCurso === a.id || checkeadasHoy.has(a.id)"
-              :aria-label="checkeadasHoy.has(a.id) ? 'Hecho hoy' : 'Marcar como hecho hoy'"
+              :aria-label="checkeadasHoy.has(a.id) ? `Hecho hoy (${hoyFormateado})` : `Marcar como hecho hoy (${hoyFormateado})`"
+              :title="checkeadasHoy.has(a.id) ? `Hecho hoy · ${hoyFormateado}` : `Marcar como hecho hoy · ${hoyFormateado}`"
               @click="onCheck(a.id)"
             >
               <svg v-if="checkeadasHoy.has(a.id)" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -265,6 +297,36 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
+}
+
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.today-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  flex-shrink: 0;
+}
+
+.today-row strong {
+  color: var(--color-text);
+}
+
+.today-hint {
+  color: var(--color-text-subtle);
+}
+
+@media (max-width: 500px) {
+  .today-hint {
+    display: none;
+  }
 }
 
 .side-col {

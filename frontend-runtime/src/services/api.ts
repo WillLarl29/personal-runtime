@@ -11,6 +11,19 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_API_URL
 
+// ApiError conserva el status HTTP para que el frontend pueda distinguir,
+// por ejemplo, un 409 (conflicto esperado, como "ya hay check hoy") de un
+// error real de servidor.
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -19,7 +32,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    throw new Error(body?.error ?? `Error ${res.status} en ${path}`)
+    throw new ApiError(res.status, body?.error ?? `Error ${res.status} en ${path}`)
   }
 
   if (res.status === 204) {

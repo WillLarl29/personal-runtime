@@ -12,8 +12,13 @@ type Actividad struct {
 	CategoriaNombre *string   `json:"categoria_nombre" db:"categoria_nombre"`
 	Prioridad       *int16    `json:"prioridad" db:"prioridad"`
 	Activa          bool      `json:"activa" db:"activa"`
-	CreadoEn        time.Time `json:"creado_en" db:"creado_en"`
-	ActualizadoEn   time.Time `json:"actualizado_en" db:"actualizado_en"`
+	// CheckHoy indica si esta actividad ya tiene un check_diario registrado en
+	// la fecha actual del servidor (checks_diarios tiene UNIQUE(actividad_id, fecha),
+	// así que como máximo puede haber uno). Se lo mandamos ya resuelto al frontend
+	// para que no tenga que inferir el estado del día a partir de clicks locales.
+	CheckHoy      bool      `json:"check_hoy" db:"check_hoy"`
+	CreadoEn      time.Time `json:"creado_en" db:"creado_en"`
+	ActualizadoEn time.Time `json:"actualizado_en" db:"actualizado_en"`
 }
 
 // CrearActividadInput es el body esperado en POST /actividades
