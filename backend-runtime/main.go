@@ -61,6 +61,8 @@ func main() {
 	mux.HandleFunc("GET /", s.handleRoot)
 	mux.HandleFunc("GET /actividades", s.handleListarActividades)
 	mux.HandleFunc("POST /actividades", s.handleCrearActividad)
+	mux.HandleFunc("PUT /actividades/{id}", s.handleActualizarActividad)
+	mux.HandleFunc("DELETE /actividades/{id}", s.handleEliminarActividad)
 	mux.HandleFunc("POST /checks", s.handleCrearCheck)
 	mux.HandleFunc("GET /resumen", s.handleResumen)
 	mux.HandleFunc("GET /categorias", s.handleListarCategorias)
@@ -174,6 +176,98 @@ func (s *server) handleCrearActividad(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, actividad)
+}
+
+// handleActualizarActividad godoc
+// @Summary      Editar actividad
+// @Description  Reemplaza título, descripción, categoría y prioridad de una actividad existente
+// @Tags         actividades
+// @Accept       json
+// @Produce      json
+// @Param        id         path      int                        true  "ID de la actividad"
+// @Param        actividad  body      ActualizarActividadInput  true  "Datos de la actividad"
+// @Success      200  {object}  Actividad
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /actividades/{id} [put]
+func (s *server) handleActualizarActividad(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var input ActualizarActividadInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	tag, err := s.db.Exec(r.Context(),
+		`UPDATE actividades
+		 SET titulo = $1, descripcion = $2, categoria_id = $3, prioridad = $4, actualizado_en = now()
+		 WHERE id = $5 AND activa = TRUE`,
+		input.Titulo, input.Descripcion, input.CategoriaID, input.Prioridad, id,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeError(w, http.StatusNotFound, errors.New("actividad no encontrada"))
+		return
+	}
+
+	rows, err := s.db.Query(r.Context(), actividadSelect+" WHERE a.id = $1", id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer rows.Close()
+
+	actividad, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByName[Actividad])
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, actividad)
+}
+
+// handleEliminarActividad godoc
+// @Summary      Eliminar actividad
+// @Description  Borrado lógico: marca la actividad como inactiva (activa = FALSE)
+// @Description  en vez de borrar la fila, para no perder su historial de checks_diarios
+// @Description  (que referencia actividad_id) ni su aporte pasado al resumen.
+// @Tags         actividades
+// @Param        id  path  int  true  "ID de la actividad"
+// @Success      204  "Sin contenido"
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /actividades/{id} [delete]
+func (s *server) handleEliminarActividad(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	tag, err := s.db.Exec(r.Context(),
+		"UPDATE actividades SET activa = FALSE, actualizado_en = now() WHERE id = $1 AND activa = TRUE",
+		id,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeError(w, http.StatusNotFound, errors.New("actividad no encontrada"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleCrearCheck godoc

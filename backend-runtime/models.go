@@ -5,13 +5,13 @@ import "time"
 // Actividad refleja la tabla actividades (ver migrations/*_baseline-esquema-inicial.sql
 // y migrations/*_categoria-como-tabla-propia.sql)
 type Actividad struct {
-	ID              int32     `json:"id" db:"id"`
-	Titulo          string    `json:"titulo" db:"titulo"`
-	Descripcion     *string   `json:"descripcion" db:"descripcion"`
-	CategoriaID     *int32    `json:"categoria_id" db:"categoria_id"`
-	CategoriaNombre *string   `json:"categoria_nombre" db:"categoria_nombre"`
-	Prioridad       *int16    `json:"prioridad" db:"prioridad"`
-	Activa          bool      `json:"activa" db:"activa"`
+	ID              int32   `json:"id" db:"id"`
+	Titulo          string  `json:"titulo" db:"titulo"`
+	Descripcion     *string `json:"descripcion" db:"descripcion"`
+	CategoriaID     *int32  `json:"categoria_id" db:"categoria_id"`
+	CategoriaNombre *string `json:"categoria_nombre" db:"categoria_nombre"`
+	Prioridad       *int16  `json:"prioridad" db:"prioridad"`
+	Activa          bool    `json:"activa" db:"activa"`
 	// CheckHoy indica si esta actividad ya tiene un check_diario registrado en
 	// la fecha actual del servidor (checks_diarios tiene UNIQUE(actividad_id, fecha),
 	// así que como máximo puede haber uno). Se lo mandamos ya resuelto al frontend
@@ -23,6 +23,16 @@ type Actividad struct {
 
 // CrearActividadInput es el body esperado en POST /actividades
 type CrearActividadInput struct {
+	Titulo      string  `json:"titulo"`
+	Descripcion *string `json:"descripcion"`
+	CategoriaID *int32  `json:"categoria_id"`
+	Prioridad   *int16  `json:"prioridad"`
+}
+
+// ActualizarActividadInput es el body esperado en PUT /actividades/{id}.
+// Reemplaza título, descripción, categoría y prioridad (edición completa,
+// igual que ActualizarCategoriaInput para categorías).
+type ActualizarActividadInput struct {
 	Titulo      string  `json:"titulo"`
 	Descripcion *string `json:"descripcion"`
 	CategoriaID *int32  `json:"categoria_id"`
@@ -62,9 +72,9 @@ type CrearCheckInput struct {
 
 // ResumenActividad refleja la vista resumen_actividades
 type ResumenActividad struct {
-	ID                     int32   `json:"id" db:"id"`
-	Titulo                 string  `json:"titulo" db:"titulo"`
-	VecesHecha             int64   `json:"veces_hecha" db:"veces_hecha"`
-	VecesNoHecha           int64   `json:"veces_no_hecha" db:"veces_no_hecha"`
+	ID                     int32    `json:"id" db:"id"`
+	Titulo                 string   `json:"titulo" db:"titulo"`
+	VecesHecha             int64    `json:"veces_hecha" db:"veces_hecha"`
+	VecesNoHecha           int64    `json:"veces_no_hecha" db:"veces_no_hecha"`
 	PorcentajeCumplimiento *float64 `json:"porcentaje_cumplimiento" db:"porcentaje_cumplimiento"`
 }

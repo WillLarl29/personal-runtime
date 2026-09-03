@@ -90,6 +90,122 @@
                 }
             }
         },
+        "/actividades/{id}": {
+            "put": {
+                "description": "Reemplaza título, descripción, categoría y prioridad de una actividad existente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "actividades"
+                ],
+                "summary": "Editar actividad",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la actividad",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la actividad",
+                        "name": "actividad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.ActualizarActividadInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Actividad"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Borrado lógico: marca la actividad como inactiva (activa = FALSE)\nen vez de borrar la fila, para no perder su historial de checks_diarios\n(que referencia actividad_id) ni su aporte pasado al resumen.",
+                "tags": [
+                    "actividades"
+                ],
+                "summary": "Eliminar actividad",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la actividad",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sin contenido"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/categorias": {
             "get": {
                 "produces": [
@@ -397,6 +513,23 @@
                 },
                 "id": {
                     "type": "integer"
+                },
+                "prioridad": {
+                    "type": "integer"
+                },
+                "titulo": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ActualizarActividadInput": {
+            "type": "object",
+            "properties": {
+                "categoria_id": {
+                    "type": "integer"
+                },
+                "descripcion": {
+                    "type": "string"
                 },
                 "prioridad": {
                     "type": "integer"

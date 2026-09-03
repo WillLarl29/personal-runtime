@@ -1,6 +1,7 @@
 import type {
   Actividad,
   CrearActividadInput,
+  ActualizarActividadInput,
   CheckDiario,
   CrearCheckInput,
   ResumenActividad,
@@ -51,6 +52,20 @@ export function crearActividad(input: CrearActividadInput): Promise<Actividad> {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export function actualizarActividad(
+  id: number,
+  input: ActualizarActividadInput,
+): Promise<Actividad> {
+  return request<Actividad>(`/actividades/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export function eliminarActividad(id: number): Promise<void> {
+  return request<void>(`/actividades/${id}`, { method: 'DELETE' })
 }
 
 export function crearCheck(input: CrearCheckInput): Promise<CheckDiario> {

@@ -22,6 +22,13 @@ export interface CrearActividadInput {
   prioridad?: number | null
 }
 
+export interface ActualizarActividadInput {
+  titulo: string
+  descripcion?: string | null
+  categoria_id?: number | null
+  prioridad?: number | null
+}
+
 export interface CheckDiario {
   id: number
   actividad_id: number

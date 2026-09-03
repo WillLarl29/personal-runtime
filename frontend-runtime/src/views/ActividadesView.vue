@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import {
   listarActividades,
   crearActividad,
+  actualizarActividad,
+  eliminarActividad,
   crearCheck,
   listarCategorias,
   obtenerResumen,
@@ -23,9 +25,12 @@ const nuevaCategoriaId = ref<number | null>(null)
 const nuevaPrioridad = ref(3)
 const creando = ref(false)
 const formAbierto = ref(false)
+// Si tiene un id, el modal está en modo edición (PUT) en vez de creación (POST).
+const editandoId = ref<number | null>(null)
 
 const checkEnCurso = ref<number | null>(null)
 const checkeadasHoy = ref<Set<number>>(new Set())
+const eliminandoId = ref<number | null>(null)
 
 const overallProgress = computed(() => {
   if (resumen.value.length === 0) return 0
@@ -77,35 +82,73 @@ async function cargarResumen() {
   }
 }
 
+function limpiarFormulario() {
+  nuevoTitulo.value = ''
+  nuevaDescripcion.value = ''
+  nuevaCategoriaId.value = null
+  nuevaPrioridad.value = 3
+}
+
 function abrirFormulario() {
+  editandoId.value = null
+  limpiarFormulario()
+  formAbierto.value = true
+}
+
+function abrirEdicion(a: Actividad) {
+  editandoId.value = a.id
+  nuevoTitulo.value = a.titulo
+  nuevaDescripcion.value = a.descripcion ?? ''
+  nuevaCategoriaId.value = a.categoria_id
+  nuevaPrioridad.value = a.prioridad ?? 3
   formAbierto.value = true
 }
 
 function cerrarFormulario() {
   formAbierto.value = false
+  editandoId.value = null
 }
 
-async function onCrearActividad() {
+async function onGuardarActividad() {
   if (!nuevoTitulo.value.trim()) return
   creando.value = true
   error.value = null
   try {
-    await crearActividad({
+    const datos = {
       titulo: nuevoTitulo.value,
       descripcion: nuevaDescripcion.value || null,
       categoria_id: nuevaCategoriaId.value,
       prioridad: nuevaPrioridad.value,
-    })
-    nuevoTitulo.value = ''
-    nuevaDescripcion.value = ''
-    nuevaCategoriaId.value = null
-    nuevaPrioridad.value = 3
+    }
+    if (editandoId.value !== null) {
+      await actualizarActividad(editandoId.value, datos)
+    } else {
+      await crearActividad(datos)
+    }
+    limpiarFormulario()
     formAbierto.value = false
+    editandoId.value = null
     await cargarActividades()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Error desconocido'
   } finally {
     creando.value = false
+  }
+}
+
+async function onEliminar(a: Actividad) {
+  if (!confirm(`¿Eliminar "${a.titulo}"? Esta acción no se puede deshacer desde la pantalla.`)) {
+    return
+  }
+  eliminandoId.value = a.id
+  error.value = null
+  try {
+    await eliminarActividad(a.id)
+    await cargarActividades()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Error desconocido'
+  } finally {
+    eliminandoId.value = null
   }
 }
 
@@ -202,6 +245,44 @@ onMounted(() => {
                 :class="{ 'is-filled': bar <= prioridadInfo(a.prioridad).bars }"
               />
             </div>
+
+            <div class="acciones">
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Editar actividad"
+                title="Editar actividad"
+                @click="abrirEdicion(a)"
+              >
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                  <path
+                    d="M11.5 2.5L14.5 5.5L5.83 14.17L2.5 15L3.33 11.67L11.5 2.5Z"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn-danger"
+                aria-label="Eliminar actividad"
+                title="Eliminar actividad"
+                :disabled="eliminandoId === a.id"
+                @click="onEliminar(a)"
+              >
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                  <path
+                    d="M3.5 4.5H13.5M6.5 4.5V2.83C6.5 2.37 6.87 2 7.33 2H9.67C10.13 2 10.5 2.37 10.5 2.83V4.5M7 7.5V12M10 7.5V12M4.5 4.5L5 13.33C5.04 13.98 5.58 14.5 6.23 14.5H10.77C11.42 14.5 11.96 13.98 12 13.33L12.5 4.5"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </li>
         </ul>
       </section>
@@ -226,9 +307,9 @@ onMounted(() => {
     </button>
 
     <div v-if="formAbierto" class="modal-overlay" @click.self="cerrarFormulario">
-      <form class="modal-card" @submit.prevent="onCrearActividad">
+      <form class="modal-card" @submit.prevent="onGuardarActividad">
         <div class="modal-header">
-          <h2>Nueva actividad</h2>
+          <h2>{{ editandoId !== null ? 'Editar actividad' : 'Nueva actividad' }}</h2>
           <button type="button" class="icon-btn" aria-label="Cerrar" @click="cerrarFormulario">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
@@ -270,7 +351,7 @@ onMounted(() => {
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" @click="cerrarFormulario">Cancelar</button>
           <button type="submit" class="btn" :disabled="creando">
-            {{ creando ? 'Guardando…' : 'Guardar actividad' }}
+            {{ creando ? 'Guardando…' : editandoId !== null ? 'Guardar cambios' : 'Guardar actividad' }}
           </button>
         </div>
       </form>
@@ -477,6 +558,12 @@ onMounted(() => {
 
 .priority-bar.is-filled {
   background: var(--color-text);
+}
+
+.acciones {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 .hint {
